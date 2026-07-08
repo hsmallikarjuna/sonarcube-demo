@@ -4,14 +4,14 @@
  * Prerequisites configured once in Jenkins (Manage Jenkins):
  *   1. "SonarQube Scanner" plugin installed.
  *   2. Manage Jenkins > System > SonarQube servers:
- *        Name           : SonarQubeServer
- *        Server URL     : http://<your-sonarqube-host>:9000
- *        Server auth tk : Jenkins credential (Secret text) with a
- *                          SonarQube user token, e.g. id "sonarqube-token"
+ *        Name           : SonarQube
+ *        Server URL     : http://sonarqube:9000  (container-to-container,
+ *                          Jenkins and SonarQube share a Docker network here)
+ *        Server auth tk : Jenkins credential (Secret text), id "sonarqube-token"
  *   3. Manage Jenkins > Tools > SonarQube Scanner installations:
  *        Name: SonarScanner  (auto-install latest, or point at a local install)
  *   4. In SonarQube: Administration > Configuration > Webhooks, add
- *        http://<jenkins-host>:8080/sonarqube-webhook/
+ *        http://<jenkins-container-name>:8080/sonarqube-webhook/
  *      This is what lets waitForQualityGate() below get an instant
  *      callback instead of polling.
  */
@@ -60,7 +60,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 dir(APP_DIR) {
-                    withSonarQubeEnv('SonarQubeServer') {
+                    withSonarQubeEnv('SonarQube') {
                         script {
                             def scannerHome = tool 'SonarScanner'
                             sh "${scannerHome}/bin/sonar-scanner -Dproject.settings=sonar-project.properties"

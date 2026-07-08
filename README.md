@@ -18,22 +18,23 @@ Quality Gates into a Jenkins pipeline. It includes:
 
 ## 1. SonarQube server
 
-### 1a. You already have SonarQube + Jenkins running as containers (this setup)
+### 1a. This environment's actual setup
 
-Jenkins reaches SonarQube through the **host**, not a shared Docker network,
-so use the host's published port rather than a container name:
+Jenkins and SonarQube run as containers on the **same Docker network** here,
+so Jenkins reaches SonarQube by container name, not by host port:
 
-- From the Jenkins container: `http://host.docker.internal:9000`
-  (works out of the box on Docker Desktop for Windows/Mac; on Linux add
-  `--add-host=host.docker.internal:host-gateway` to how the Jenkins container
-  was started, or use the host's LAN IP instead).
-- From your browser: whatever port you published SonarQube on, e.g.
-  `http://localhost:9000`.
+- From Jenkins: `http://sonarqube:9000`
+- From your browser: `http://localhost:9000` (published on the host)
 
-Log in, set a password if this is first boot, then generate a scanner token:
-**My Account > Security > Generate Token**.
+Already configured in this Jenkins instance (Manage Jenkins > System):
+- SonarQube server name: **`SonarQube`**, URL `http://sonarqube:9000`
+- Credential id **`sonarqube-token`** (Secret text) holding a SonarQube token
+- Scanner tool name: **`SonarScanner`** (Manage Jenkins > Tools)
 
-### 1b. Starting from scratch
+The `Jenkinsfile` in this repo references those exact names — no extra
+Jenkins configuration is required beyond creating the pipeline job (§3).
+
+### 1b. Starting from scratch (different environment)
 
 ```bash
 docker compose up -d
@@ -69,24 +70,22 @@ Measures, and Quality Gate status.
 
 ## 3. Wire it into Jenkins
 
-1. Install the **SonarQube Scanner** plugin (Manage Jenkins > Plugins).
-2. Manage Jenkins > System > **SonarQube servers**: add a server named
-   `SonarQubeServer`, URL `http://host.docker.internal:9000` (see §1a above —
-   adjust if your Jenkins container can't resolve that host), and a
-   credential (Secret text) holding the token you generated above (e.g. id
-   `sonarqube-token`).
-3. Manage Jenkins > Tools > **SonarQube Scanner installations**: add one named
-   `SonarScanner`. Since your Jenkins container already has Node.js/npm, it
-   can also auto-install the scanner binary here — no extra image needed.
-4. In SonarQube, add a webhook (**Administration > Configuration >
-   Webhooks**) pointing at `http://<jenkins-host-or-host.docker.internal>:8080/sonarqube-webhook/`.
-   This is what lets the pipeline's `waitForQualityGate()` step get notified
-   instantly instead of polling. If SonarQube can't reach that address, the
-   Quality Gate stage will instead time out after 10 minutes (see the
-   `timeout` wrapper in the Jenkinsfile) rather than hang forever.
-5. In Jenkins, create a new **Pipeline** job (or Multibranch Pipeline) pointed
-   at `https://github.com/hsmallikarjuna/sonarcube-demo.git` — it will pick up
-   the `Jenkinsfile` at the repo root automatically.
+This environment already has the SonarQube Scanner plugin, the `SonarQube`
+server connection, and the `SonarScanner` tool configured (§1a). What's
+project-specific and was created for this repo:
+
+- SonarQube project **`sonar-demo-app`** (Administration > Projects), matching
+  `sonar.projectKey` in `sample-app/sonar-project.properties`.
+- Jenkins pipeline job **`sonarcube-demo-pipeline`**, a Git-backed Pipeline
+  job pointed at `https://github.com/hsmallikarjuna/sonarcube-demo.git`
+  (branch `main`, script path `Jenkinsfile`) — same shape as the existing
+  `Devsecops-demo-pipeline` job.
+
+If reproducing this in a fresh environment instead, you'd also need a webhook
+in SonarQube (**Administration > Configuration > Webhooks**) pointing at
+`http://<jenkins-container-name>:8080/sonarqube-webhook/` so
+`waitForQualityGate()` gets notified instantly instead of relying on the
+10-minute `timeout` fallback in the Jenkinsfile.
 
 Run the job. The pipeline:
 
