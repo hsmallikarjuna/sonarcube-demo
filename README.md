@@ -11,14 +11,12 @@ Quality Gates into a Jenkins pipeline. It includes:
   breakdown.
 - **`Jenkinsfile`** — declarative pipeline: install → test/coverage → SonarQube
   scan → Quality Gate → publish reports → build → deploy.
-- **`docker-compose.yml`** — spins up a local SonarQube server + Postgres.
-  Only needed if you *don't* already have a SonarQube server; skip to step 1a
-  if Jenkins and SonarQube are already running as containers.
 - **`docs/QUALITY_GATES_AND_SECURITY_HOTSPOTS.md`** — conceptual explainer.
+- **`docs/SCAN_RESULTS.md`** — actual results pulled from a real run against
+  this environment's SonarQube instance (Quality Gate, measures, issues,
+  hotspots).
 
 ## 1. SonarQube server
-
-### 1a. This environment's actual setup
 
 Jenkins and SonarQube run as containers on the **same Docker network** here,
 so Jenkins reaches SonarQube by container name, not by host port:
@@ -33,21 +31,6 @@ Already configured in this Jenkins instance (Manage Jenkins > System):
 
 The `Jenkinsfile` in this repo references those exact names — no extra
 Jenkins configuration is required beyond creating the pipeline job (§3).
-
-### 1b. Starting from scratch (different environment)
-
-```bash
-docker compose up -d
-# first boot takes ~1-2 minutes; watch it with:
-docker compose logs -f sonarqube
-```
-
-Browse to http://localhost:9000, log in with `admin`/`admin`, and set a new
-password when prompted.
-
-> Linux/WSL note: SonarQube needs `vm.max_map_count >= 262144` on the Docker
-> host. If the container exits with an Elasticsearch bootstrap error, run:
-> `sudo sysctl -w vm.max_map_count=262144`
 
 Generate a token for the scanner: **My Account > Security > Generate Token**.
 
@@ -71,7 +54,7 @@ Measures, and Quality Gate status.
 ## 3. Wire it into Jenkins
 
 This environment already has the SonarQube Scanner plugin, the `SonarQube`
-server connection, and the `SonarScanner` tool configured (§1a). What's
+server connection, and the `SonarScanner` tool configured (§1). What's
 project-specific and was created for this repo:
 
 - SonarQube project **`sonar-demo-app`** (Administration > Projects), matching
